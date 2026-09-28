@@ -41,7 +41,6 @@ export async function saveEventAction(form: FormData) {
   const errors = validateEvent({ name, cityId, categoryId, startDate, endDate, registrationUrl, officialWebsiteUrl, sourceUrl: value(form, "sourceUrl"), distances });
   if (errors.length) throw new Error(errors.join(" "));
   const city = await prisma.city.findUniqueOrThrow({ where: { id: cityId } });
-  const category = await prisma.eventCategory.findUniqueOrThrow({ where: { id: categoryId } });
   const selectedSourceId = value(form, "sourceId");
   const selectedSource = selectedSourceId ? await prisma.eventSource.findUnique({ where: { id: selectedSourceId } }) : null;
   const statusValue = value(form, "status");
@@ -115,13 +114,30 @@ export async function saveSourceAction(form: FormData) {
   const name = value(form, "name");
   const type = value(form, "type");
   const baseUrl = value(form, "baseUrl");
+  const enabled = form.get("enabled") === "on";
+  const crawlDepth = Number(value(form, "crawlDepth") || 2);
+  const maxPagesPerRun = Number(value(form, "maxPagesPerRun") || 50);
   if (!name) throw new Error("Source name is required.");
   if (!["MANUAL", "API", "RSS", "WEB", "OTHER"].includes(type)) throw new Error("Select a supported source type.");
   if (["WEB", "API"].includes(type)) {
-    try { const url = new URL(baseUrl); if (url.protocol !== "https:") throw new Error(); }
-    catch { throw new Error("JSON feed sources require a valid HTTPS URL."); }
+    try {
+      const url = new URL(baseUrl);
+      if (url.username || url.password || (type === "WEB" ? !["http:", "https:"].includes(url.protocol) : url.protocol !== "https:")) throw new Error();
+    } catch { throw new Error(type === "WEB" ? "Website source must be a valid HTTP or HTTPS URL." : "API feed sources require a valid HTTPS URL."); }
   }
-  await prisma.eventSource.create({ data: { name, slug: `${slugify(name)}-${Date.now().toString(36)}`, type: type as "MANUAL" | "API" | "RSS" | "WEB" | "OTHER", baseUrl: baseUrl || null, enabled: true } });
+  if (type === "WEB" && (!Number.isInteger(crawlDepth) || crawlDepth < 1 || crawlDepth > 5)) throw new Error("Crawl depth must be between 1 and 5.");
+  if (type === "WEB" && (!Number.isInteger(maxPagesPerRun) || maxPagesPerRun < 1 || maxPagesPerRun > 100)) throw new Error("Maximum pages per run must be between 1 and 100.");
+  if (["RSS", "OTHER"].includes(type)) throw new Error("That source type is not implemented yet. Use WEB, API, or MANUAL.");
+  if (type === "MANUAL" && baseUrl) throw new Error("Manual sources do not use a website URL.");
+  await prisma.eventSource.create({ data: {
+    name,
+    slug: `${slugify(name)}-${Date.now().toString(36)}`,
+    type: type as "MANUAL" | "API" | "WEB",
+    baseUrl: baseUrl || null,
+    enabled,
+    crawlDepth: type === "WEB" ? crawlDepth : 2,
+    maxPagesPerRun: type === "WEB" ? maxPagesPerRun : 50,
+  } });
   revalidatePath("/admin/sources");
   redirect("/admin/sources");
 }

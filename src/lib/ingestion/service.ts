@@ -4,6 +4,8 @@ import { slugify } from "@/lib/domain";
 import { eventDuplicateKey, fallbackExternalId, normalizeText, splitLocation, validateNormalizedEvent } from "./normalization";
 import { nameSimilarity } from "./deduplication";
 import { adapterFor } from "./registry";
+import type { EventSourceAdapter } from "./types";
+import { WebsiteCrawlBlockedError } from "./adapters/website";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -16,8 +18,9 @@ export async function runSource(sourceId: string) {
   const run = await prisma.ingestionRun.create({ data: { sourceId } });
   const counts = { recordsDiscovered: 0, recordsCreated: 0, recordsUpdated: 0, recordsRejected: 0, duplicatesFound: 0 };
   const failures: string[] = [];
+  let adapter: EventSourceAdapter | null = null;
   try {
-    const adapter = adapterFor(source);
+    adapter = adapterFor(source);
     const discovered = await adapter.discover();
     counts.recordsDiscovered = discovered.length;
     for (const raw of discovered) {
@@ -100,15 +103,24 @@ export async function runSource(sourceId: string) {
       }
     }
     const status = failures.length ? counts.recordsCreated || counts.recordsUpdated ? "PARTIAL_SUCCESS" : "FAILED" : counts.recordsRejected ? "PARTIAL_SUCCESS" : "SUCCESS";
+    const metadata = adapter.getRunMetadata?.();
     await prisma.$transaction([
-      prisma.ingestionRun.update({ where: { id: run.id }, data: { ...counts, completedAt: new Date(), status, errorMessage: failures.length ? failures.slice(0, 10).join("\n") : null } }),
+      prisma.ingestionRun.update({ where: { id: run.id }, data: { ...counts, completedAt: new Date(), status, robotsStatus: metadata?.robotsStatus, robotsReason: metadata?.robotsReason, errorMessage: failures.length ? failures.slice(0, 10).join("\n") : null } }),
       prisma.eventSource.update({ where: { id: sourceId }, data: { lastRunAt: new Date(), ...(status === "SUCCESS" || status === "PARTIAL_SUCCESS" ? { lastSuccessAt: new Date() } : { lastErrorAt: new Date() }) } }),
     ]);
     return { runId: run.id, status, ...counts };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown ingestion error.";
+    const metadata = adapter?.getRunMetadata?.();
+    if (error instanceof WebsiteCrawlBlockedError) {
+      await prisma.$transaction([
+        prisma.ingestionRun.update({ where: { id: run.id }, data: { ...counts, completedAt: new Date(), status: "BLOCKED", robotsStatus: metadata?.robotsStatus, robotsReason: metadata?.robotsReason, errorMessage: message } }),
+        prisma.eventSource.update({ where: { id: sourceId }, data: { lastRunAt: new Date(), lastErrorAt: new Date() } }),
+      ]);
+      return { runId: run.id, status: "BLOCKED", ...counts };
+    }
     await prisma.$transaction([
-      prisma.ingestionRun.update({ where: { id: run.id }, data: { ...counts, completedAt: new Date(), status: "FAILED", errorMessage: message } }),
+      prisma.ingestionRun.update({ where: { id: run.id }, data: { ...counts, completedAt: new Date(), status: "FAILED", robotsStatus: metadata?.robotsStatus, robotsReason: metadata?.robotsReason, errorMessage: message } }),
       prisma.eventSource.update({ where: { id: sourceId }, data: { lastRunAt: new Date(), lastErrorAt: new Date() } }),
     ]);
     throw error;

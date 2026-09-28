@@ -11,7 +11,35 @@ export function splitLocation(value: string): { city: string; state?: string } {
 }
 
 export function normalizeCategory(value: string): string {
-  const key = normalizeText(value).replace(/\s/g, "");
+  const normalized = normalizeText(value);
+  const key = normalized.replace(/\s/g, "");
+  if (/\bhyrox\b/.test(normalized)) return "hyrox";
+  if (/crossfit/.test(normalized)) return "crossfit-competition";
+  if (/\bocr\b|obstacle course/.test(normalized)) return "ocr";
+  if (/hybrid fitness|hybrid race/.test(normalized)) return "hybrid-race";
+  if (/\bbrm\b|brevet/.test(normalized)) return "brm";
+  if (/gran fondo|granfondo/.test(normalized)) return "gran-fondo";
+  if (/\bmtb\b|mountain bike/.test(normalized)) return "mtb";
+  if (/\bgravel\b/.test(normalized)) return "gravel";
+  if (/aquathlon/.test(normalized)) return "aquathlon";
+  if (/duathlon/.test(normalized)) return "duathlon";
+  if (/swim ?run/.test(normalized)) return "swimrun";
+  if (/adventure race/.test(normalized)) return "adventure-race";
+  if (/ultra/.test(normalized)) return "ultra";
+  if (/trail/.test(normalized)) return "trail-run";
+  if (/70[ .-]?3/.test(normalized)) return /triathlon|ironman/.test(normalized) ? "70-3" : "triathlon";
+  if (/iron ?distance|ironman|full distance triathlon/.test(normalized)) return "full-distance";
+  if (/olympic/.test(normalized) && /triathlon/.test(normalized)) return "olympic";
+  if (/sprint/.test(normalized) && /triathlon/.test(normalized)) return "sprint";
+  if (/\b(half marathon|half marathon|21 ?k|21\.1 ?km|211 ?km|hm)\b/.test(normalized)) return "half-marathon";
+  if (/\b10 ?k|10 ?km\b/.test(normalized)) return "10k";
+  if (/\b5 ?k|5 ?km\b/.test(normalized)) return "5k";
+  if (/\b42\s*195\s*k\b/.test(normalized)) return "marathon";
+  if (/marathon/.test(normalized)) return "marathon";
+  if (/triathlon/.test(normalized)) return "triathlon";
+  if (/cycling|cyclist|bicycle|\bbike\b/.test(normalized)) return "road-cycling";
+  if (/walkathon|walking race/.test(normalized)) return "walkathon";
+  if (/running|\brun\b/.test(normalized)) return "running";
   if (["21k", "211k", "21km", "211km", "hm", "halfmarathon"].includes(key)) return "half-marathon";
   if (["42k", "42195k", "42km", "42195km", "marathon"].includes(key)) return "marathon";
   if (["703", "703triathlon", "triathlon703", "triathlon"].includes(key)) return "triathlon";

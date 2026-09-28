@@ -3,10 +3,13 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 export function getPrisma(): PrismaClient | null {
-  const connectionString = process.env.DATABASE_URL?.trim() || process.env.DIRECT_URL?.trim();
+  const connectionString =
+    process.env.DATABASE_URL?.trim() || process.env.DIRECT_URL?.trim();
   if (!connectionString) {
     if (process.env.DATABASE_URL) {
-      throw new Error("Supabase URL is configured, but Prisma needs DATABASE_URL (and DIRECT_URL for migrations). Add the PostgreSQL connection strings to .env.local.");
+      throw new Error(
+        "Supabase URL is configured, but Prisma needs DATABASE_URL (and DIRECT_URL for migrations). Add the PostgreSQL connection strings to .env.local.",
+      );
     }
     return null;
   }

@@ -22,4 +22,5 @@ export interface EventSourceAdapter {
   sourceName: string;
   discover(): Promise<RawEvent[]>;
   normalize(rawEvent: RawEvent): Promise<NormalizedEvent>;
+  getRunMetadata?(): { robotsStatus?: "ALLOWED" | "DISALLOWED" | "UNKNOWN"; robotsReason?: string };
 }

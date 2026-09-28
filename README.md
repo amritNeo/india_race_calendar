@@ -37,9 +37,15 @@ Apply the additive Prisma migration with `npx prisma migrate deploy` against `DI
 
 The admin workspace is at `/admin`. It has no authentication and is disabled in production. Keep production mutations disabled until real authentication and authorization are added. Local development admin actions require a configured database.
 
-The manual adapter is used for manual event creation. The configurable public JSON feed adapter accepts an HTTPS endpoint returning an array or `{ "events": [...] }`; records are stored raw before normalization and always enter review. The feed is capped at 25 records and 2 MB per run, uses a 12-second request timeout, rejects IP/private hosts and redirects, and never bypasses access restrictions. No external source is preconfigured or claimed as tested. RSS and webpage extraction are not implemented yet.
+The manual adapter is used for manual event creation. The configurable public JSON feed adapter accepts an HTTPS endpoint returning an array or `{ "events": [...] }`; records are stored raw before normalization and always enter review. The feed is capped at 25 records and 2 MB per run, uses a 12-second request timeout, rejects IP/private hosts and redirects, and never bypasses access restrictions. No external source is preconfigured or claimed as tested. RSS extraction is not implemented.
 
 To create a JSON feed source, use **Admin → Sources**, configure its HTTPS endpoint, enable it, then choose **Run now**. Each item may provide `externalId`, `sourceUrl`, `name` (or `title`), `description`, `startDate` (or `date`), `endDate`, `city`, `category`, `venue`, `organizer`, `registrationUrl`, `officialWebsiteUrl`, and `distances` (`name`, `distanceKm`, `discipline`). Existing city/category taxonomy is used; unmatched locations/categories stay in failed raw review for correction. City aliases can be added while editing an event.
+
+## Phase 3 public website discovery
+
+Create a website source at `/admin/sources/new` and choose `WEB` to crawl public HTML pages. The crawler checks `robots.txt`, consults sitemap files, follows same-host links within the configured depth/page limits, and extracts Schema.org JSON-LD, microdata, OpenGraph, and basic semantic HTML data. Website requests are restricted to public IP addresses, pinned to the validated address, limited by size and timeout, and revalidated on redirects. Disallowed or access-denied runs are recorded as `BLOCKED`; discovered events still enter the existing raw-event normalization and pending-review flow and are never published automatically.
+
+Apply the Phase 3 schema migration with `npx prisma migrate deploy` against `DIRECT_URL` before running website sources. Crawl depth defaults to 2 (maximum 5), and the page limit defaults to 50 (maximum 100).
 
 ## Database setup and seed
 
@@ -99,10 +105,10 @@ Pages define titles/descriptions and canonical metadata where applicable. Event 
 
 ## Next phases
 
-Phase 3 can add authenticated production administration, additional permitted API/RSS adapters, and later AI-assisted extraction with human review. Keep the canonical event write path validated and reviewed.
+Later work can add authenticated production administration, RSS and scheduled crawling, maps, notifications, and optional AI-assisted extraction with human review. Keep the canonical event write path validated and reviewed.
 
 ## Current limits
 
-- No admin authentication, RSS/webpage adapters, scheduled trigger, maps, or notifications. Admin reads/writes must remain unavailable in production until authentication is implemented.
+- No admin authentication, RSS adapter, scheduled crawling, maps, or notifications. Admin reads/writes must remain unavailable in production until authentication is implemented.
 - Demo records have no live registration/official links and are explicitly marked.
 - Public event listings are currently capped at 60 results; a production catalog should add cursor pagination.

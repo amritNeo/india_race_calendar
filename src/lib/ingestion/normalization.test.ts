@@ -10,7 +10,12 @@ describe("ingestion normalization", () => {
     expect(normalizeText("Pimpri-Chinchwad")).toBe(normalizeText("Pimpri Chinchwad"));
   });
 
-  it.each([["21K", "half-marathon"], ["21.1 KM", "half-marathon"], ["HM", "half-marathon"], ["42.195K", "marathon"], ["42K", "marathon"], ["70.3", "triathlon"]])("maps %s to %s", (input, expected) => {
+  it.each([
+    ["21K", "half-marathon"], ["21.1 KM", "half-marathon"], ["HM", "half-marathon"],
+    ["42.195K", "marathon"], ["42K", "marathon"], ["70.3", "triathlon"], ["Ironman 70.3", "70-3"],
+    ["10K", "10k"], ["5K", "5k"], ["Trail Ultra", "ultra"], ["MTB", "mtb"],
+    ["Gravel Gran Fondo", "gran-fondo"], ["BRM 200", "brm"], ["HYROX", "hyrox"], ["CrossFit competition", "crossfit-competition"],
+  ])("maps %s to %s", (input, expected) => {
     expect(normalizeCategory(input)).toBe(expected);
   });
 
