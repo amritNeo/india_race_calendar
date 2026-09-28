@@ -73,12 +73,12 @@ export async function getCity(slug: string) {
   const cities = await getCities();
   return cities.find((city) => city.slug === slug) ?? null;
 }
-export async function getCategory(slug: string) {
+export async function getCategory(slug: string): Promise<EventCategorySummary | null> {
   const categories = await getCategories();
   const exact = categories.find((category) => category.slug === slug);
   if (exact) return exact;
   const child = categories.find((category) => category.parent?.slug === slug);
-  return child?.parent ?? null;
+  return child?.parent ? { ...child.parent, parent: null } : null;
 }
 
 export function toPublicEvent(event: DemoEvent) {
