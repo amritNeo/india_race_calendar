@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  SOLD_OUT
+  POSTPONED
+  CANCELLED
+  COMPLETED
+}
+
+enum Discipline {
+  RUN
+  BIKE
+  SWIM
+  WALK
+  ROW
+  OTHER
+}
+
+model Country {
+  id     String  @id @default(cuid())
+  name   String
+  code   String  @unique
+  states State[]
+  @@index([name])
+}
+
+model State {
+  id        String  @id @default(cuid())
+  name      String
+  slug      String  @unique
+  countryId String
+  country   Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cities    City[]
+  @@unique([countryId, name])
+  @@index([countryId])
+}
+
+model City {
+  id        String  @id @default(cuid())
+  name      String
+  slug      String  @unique
+  stateId   String
+  state     State   @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  venues    Venue[]
+  events    Event[]
+  @@index([stateId])
+}
+
+model Venue {
+  id        String  @id @default(cuid())
+  name      String
+  address   String?
+  latitude  Decimal? @db.Decimal(9, 6)
+  longitude Decimal? @db.Decimal(9, 6)
+  cityId    String
+  city      City    @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  events    Event[]
+  @@index([cityId])
+}
+
+model Organizer {
+  id          String  @id @default(cuid())
+  name        String
+  websiteUrl  String?
+  description String?
+  events      Event[]
+  @@index([name])
+}
+
+model EventCategory {
+  id        String          @id @default(cuid())
+  name      String
+  slug      String          @unique
+  parentId  String?
+  parent    EventCategory?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  EventCategory[] @relation("CategoryTree")
+  events    Event[]
+  @@index([parentId])
+}
+
+model Event {
+  id                String       @id @default(cuid())
+  name              String
+  slug              String       @unique
+  description       String       @db.Text
+  organizerId       String?
+  organizer         Organizer?   @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  venueId           String?
+  venue             Venue?       @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  cityId            String
+  city              City         @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  categoryId        String
+  category          EventCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  startDate         DateTime     @db.Date
+  endDate           DateTime?    @db.Date
+  registrationUrl   String?
+  officialWebsiteUrl String?
+  sourceName        String?
+  sourceUrl         String?
+  lastVerifiedAt    DateTime?
+  status            EventStatus  @default(DRAFT)
+  isDemo            Boolean      @default(false)
+  distances         EventDistance[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  @@index([startDate, status])
+  @@index([cityId, startDate])
+  @@index([categoryId, startDate])
+  @@index([status])
+}
+
+model EventDistance {
+  id         String     @id @default(cuid())
+  eventId    String
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name       String
+  discipline Discipline @default(OTHER)
+  distanceKm Decimal?   @db.Decimal(8, 3)
+  sequence   Int        @default(0)
+  @@index([eventId, sequence])
+}

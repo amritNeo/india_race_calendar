@@ -1,0 +1,1 @@
+export default function AdminPage() { return <main className="container" style={{ paddingTop: 80, maxWidth: 700 }}><div className="eyebrow">Phase 2</div><h1 style={{ fontSize: 42, letterSpacing: "-.05em" }}>Admin portal coming in Phase 2</h1><p style={{ color: "var(--muted)" }}>Event management tools will be added in a future release.</p></main>; }
