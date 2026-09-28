@@ -53,9 +53,21 @@ export async function getCities() {
   const prisma = getPrisma();
   return prisma ? prisma.city.findMany({ include: { state: true }, orderBy: { name: "asc" } }) : demoCities;
 }
-export async function getCategories() {
+export type EventCategorySummary = {
+  name: string;
+  slug: string;
+  parent: { name: string; slug: string } | null;
+};
+
+export async function getCategories(): Promise<EventCategorySummary[]> {
   const prisma = getPrisma();
-  return prisma ? prisma.eventCategory.findMany({ include: { parent: true }, orderBy: [{ parentId: "asc" }, { name: "asc" }] }) : demoCategories;
+  if (!prisma) return demoCategories;
+  const categories = await prisma.eventCategory.findMany({ include: { parent: true }, orderBy: [{ parentId: "asc" }, { name: "asc" }] });
+  return categories.map(({ name, slug, parent }) => ({
+    name,
+    slug,
+    parent: parent ? { name: parent.name, slug: parent.slug } : null,
+  }));
 }
 export async function getCity(slug: string) {
   const cities = await getCities();
