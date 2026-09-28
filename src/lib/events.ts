@@ -45,7 +45,7 @@ export async function getEvent(slug: string): Promise<DemoEvent | null> {
   const prisma = getPrisma();
   if (!prisma) return demoEvents.find((event) => event.slug === slug) ?? null;
   const row = await prisma.event.findUnique({ where: { slug }, include: { city: { include: { state: true } }, category: { include: { parent: true } }, venue: true, organizer: true, distances: { orderBy: { sequence: "asc" } } } });
-  if (!row || row.status === "DRAFT") return null;
+  if (!row || !["PUBLISHED", "REGISTRATION_OPEN", "REGISTRATION_CLOSED", "SOLD_OUT", "POSTPONED", "CANCELLED", "COMPLETED"].includes(row.status)) return null;
   return normalizeEvent(row as unknown as Record<string, unknown>);
 }
 

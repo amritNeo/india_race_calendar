@@ -28,14 +28,16 @@ export function filterEvents(events: DemoEvent[], filters: EventFilters): DemoEv
   }).sort((a, b) => a.startDate.localeCompare(b.startDate));
 }
 
-export function validateEvent(input: { name?: string; cityId?: string; categoryId?: string; startDate?: string; endDate?: string; registrationUrl?: string; officialWebsiteUrl?: string; distances?: { distanceKm?: number | null }[] }): string[] {
+export function validateEvent(input: { name?: string; cityId?: string; categoryId?: string; startDate?: string; endDate?: string; registrationUrl?: string; officialWebsiteUrl?: string; sourceUrl?: string; distances?: { distanceKm?: number | null }[] }): string[] {
   const errors: string[] = [];
   if (!input.name?.trim()) errors.push("Event name is required.");
   if (!input.cityId) errors.push("City is required.");
   if (!input.categoryId) errors.push("Category is required.");
-  if (!input.startDate || Number.isNaN(Date.parse(input.startDate))) errors.push("A valid start date is required.");
-  if (input.endDate && input.startDate && Date.parse(input.endDate) < Date.parse(input.startDate)) errors.push("End date cannot be before start date.");
-  for (const [label, value] of [["Registration URL", input.registrationUrl], ["Official website URL", input.officialWebsiteUrl]] as const) {
+  const validDate = (value?: string) => Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) === value);
+  if (!validDate(input.startDate)) errors.push("A valid start date is required.");
+  if (input.endDate && !validDate(input.endDate)) errors.push("A valid end date is required.");
+  if (input.endDate && input.startDate && validDate(input.startDate) && validDate(input.endDate) && Date.parse(input.endDate) < Date.parse(input.startDate)) errors.push("End date cannot be before start date.");
+  for (const [label, value] of [["Registration URL", input.registrationUrl], ["Official website URL", input.officialWebsiteUrl], ["Source URL", input.sourceUrl]] as const) {
     if (value) { try { const url = new URL(value); if (!["http:", "https:"].includes(url.protocol)) throw new Error(); } catch { errors.push(`${label} must be a valid HTTP or HTTPS URL.`); } }
   }
   if (input.distances?.some((distance) => distance.distanceKm != null && (!Number.isFinite(distance.distanceKm) || distance.distanceKm < 0))) errors.push("Distance must be zero or greater.");

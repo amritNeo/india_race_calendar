@@ -1,6 +1,6 @@
 # India Race Calendar
 
-A Phase 1 event discovery application for endurance and fitness events across India. It uses Next.js App Router and TypeScript, PostgreSQL through Prisma ORM, and Tailwind CSS 4. All event and taxonomy lookups are server-side; filters are shareable URL parameters.
+A Phase 2 event discovery and data management application for endurance and fitness events across India. It uses Next.js App Router and TypeScript, PostgreSQL through Prisma ORM, and Tailwind CSS 4. All public event and taxonomy lookups are server-side; filters are shareable URL parameters.
 
 > Development listings are illustrative samples marked `isDemo`. They are not verified real races, and no source, registration, or official URLs are fabricated.
 
@@ -11,6 +11,8 @@ A Phase 1 event discovery application for endurance and fitness events across In
 - Without a database connection, the application uses the same clearly labeled sample event set so the UI can be explored before provisioning Supabase.
 - Prisma models Country → State → City, Venue, Organizer, hierarchical EventCategory, Event, and one-to-many EventDistance. Provenance, source verification time, status, and demo flags are retained on each event.
 - `src/lib/domain.ts` contains URL slug, filtering, and input validation helpers independent of UI/database code.
+- `src/lib/ingestion/` contains source adapters, deterministic normalization, duplicate detection, and the server-side ingestion runner.
+- `EventSource`, `RawEvent`, `EventSourceRecord`, and `IngestionRun` retain source configuration, original payloads, provenance, and execution history. The canonical `Event` is published only after review.
 
 ## Technology
 
@@ -28,6 +30,16 @@ Copy `.env.example` to `.env.local`. Set `DATABASE_URL` to the application Postg
 The Supabase project URL and publishable/anon key are not PostgreSQL connection strings and cannot be used by Prisma. Copy the database connection string from Supabase's **Connect** dialog into `DATABASE_URL` and the direct connection into `DIRECT_URL`. Keep both values private and do not prefix them with `NEXT_PUBLIC_`.
 
 The app can be started without database variables to preview its demo data. Database migrations and seeding require both database URLs.
+
+## Phase 2 migration and ingestion
+
+Apply the additive Prisma migration with `npx prisma migrate deploy` against `DIRECT_URL`. It adds source/provenance/raw-event/run tables, review statuses, city aliases, duplicate decisions, and supporting indexes. It does not reset or replace Phase 1 data. Row-level security is enabled on the application tables without public Data API policies; reads and writes go through the server-side Prisma connection.
+
+The admin workspace is at `/admin`. It has no authentication and is disabled in production. Keep production mutations disabled until real authentication and authorization are added. Local development admin actions require a configured database.
+
+The manual adapter is used for manual event creation. The configurable public JSON feed adapter accepts an HTTPS endpoint returning an array or `{ "events": [...] }`; records are stored raw before normalization and always enter review. The feed is capped at 25 records and 2 MB per run, uses a 12-second request timeout, rejects IP/private hosts and redirects, and never bypasses access restrictions. No external source is preconfigured or claimed as tested. RSS and webpage extraction are not implemented yet.
+
+To create a JSON feed source, use **Admin → Sources**, configure its HTTPS endpoint, enable it, then choose **Run now**. Each item may provide `externalId`, `sourceUrl`, `name` (or `title`), `description`, `startDate` (or `date`), `endDate`, `city`, `category`, `venue`, `organizer`, `registrationUrl`, `officialWebsiteUrl`, and `distances` (`name`, `distanceKm`, `discipline`). Existing city/category taxonomy is used; unmatched locations/categories stay in failed raw review for correction. City aliases can be added while editing an event.
 
 ## Database setup and seed
 
@@ -85,18 +97,12 @@ Create a PostgreSQL project and copy its connection strings from the database se
 
 Pages define titles/descriptions and canonical metadata where applicable. Event routes have dynamic Open Graph and Twitter metadata. `/sitemap.xml` includes event, city, and category pages; `/robots.txt` allows indexing and excludes `/admin`.
 
-## Phase 2 roadmap
+## Next phases
 
-Add ingestion adapters for web/API/RSS sources, provenance and duplicate review flows, verified organizer profiles, user submissions and admin approval, then notifications, maps, and personalized discovery. Keep ingestion writes behind validation and review so the public event model remains the canonical record.
+Phase 3 can add authenticated production administration, additional permitted API/RSS adapters, and later AI-assisted extraction with human review. Keep the canonical event write path validated and reviewed.
 
 ## Current limits
 
-- No authentication, editing interface, ingestion, maps, or notifications.
+- No admin authentication, RSS/webpage adapters, scheduled trigger, maps, or notifications. Admin reads/writes must remain unavailable in production until authentication is implemented.
 - Demo records have no live registration/official links and are explicitly marked.
-- Pagination is currently capped at 60 results; a production catalog should add cursor pagination.
-- No cursor pagination yet; current listings are capped at 60 results.
-
-
-
-Database Password
-Qaz!@#$75395
+- Public event listings are currently capped at 60 results; a production catalog should add cursor pagination.

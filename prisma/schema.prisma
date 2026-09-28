@@ -16,6 +16,36 @@ enum EventStatus {
   POSTPONED
   CANCELLED
   COMPLETED
+  PENDING_REVIEW
+  REJECTED
+}
+
+enum EventSourceType {
+  MANUAL
+  API
+  RSS
+  WEB
+  OTHER
+}
+
+enum RawEventStatus {
+  DISCOVERED
+  PROCESSING
+  NORMALIZED
+  FAILED
+  IGNORED
+}
+
+enum IngestionRunStatus {
+  RUNNING
+  SUCCESS
+  PARTIAL_SUCCESS
+  FAILED
+}
+
+enum DuplicateDecisionType {
+  KEEP_SEPARATE
+  IGNORED
 }
 
 enum Discipline {
@@ -54,7 +84,17 @@ model City {
   state     State   @relation(fields: [stateId], references: [id], onDelete: Restrict)
   venues    Venue[]
   events    Event[]
+  aliases   CityAlias[]
   @@index([stateId])
+}
+
+model CityAlias {
+  id        String   @id @default(cuid())
+  alias     String   @unique
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@index([cityId])
 }
 
 model Venue {
@@ -112,12 +152,16 @@ model Event {
   status            EventStatus  @default(DRAFT)
   isDemo            Boolean      @default(false)
   distances         EventDistance[]
+  sourceRecords     EventSourceRecord[]
+  rawEvents         RawEvent[]
+  duplicateKey      String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   @@index([startDate, status])
   @@index([cityId, startDate])
   @@index([categoryId, startDate])
   @@index([status])
+  @@index([duplicateKey])
 }
 
 model EventDistance {
@@ -129,4 +173,89 @@ model EventDistance {
   distanceKm Decimal?   @db.Decimal(8, 3)
   sequence   Int        @default(0)
   @@index([eventId, sequence])
+}
+
+model EventSource {
+  id            String          @id @default(cuid())
+  name          String
+  slug          String          @unique
+  type          EventSourceType
+  baseUrl       String?
+  enabled       Boolean         @default(false)
+  lastRunAt     DateTime?
+  lastSuccessAt DateTime?
+  lastErrorAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  records       EventSourceRecord[]
+  rawEvents     RawEvent[]
+  runs          IngestionRun[]
+  @@index([enabled])
+}
+
+model EventSourceRecord {
+  id          String      @id @default(cuid())
+  eventId     String
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sourceId    String
+  source      EventSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  externalId  String?
+  sourceUrl   String?
+  registrationUrl String?
+  officialWebsiteUrl String?
+  lastVerifiedAt DateTime?
+  originalTitle String?
+  rawPayload    Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  @@unique([sourceId, externalId])
+  @@index([eventId])
+  @@index([sourceId])
+}
+
+model RawEvent {
+  id            String         @id @default(cuid())
+  sourceId      String
+  source        EventSource    @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  eventId       String?
+  event         Event?         @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  externalId    String?
+  sourceUrl     String?
+  rawPayload    Json
+  contentHash   String
+  discoveredAt  DateTime       @default(now())
+  processedAt   DateTime?
+  status        RawEventStatus @default(DISCOVERED)
+  errorMessage  String?        @db.Text
+  validationErrors Json?
+  @@unique([sourceId, contentHash])
+  @@index([sourceId])
+  @@index([externalId])
+  @@index([status, discoveredAt])
+  @@index([eventId])
+}
+
+model IngestionRun {
+  id                String            @id @default(cuid())
+  sourceId          String
+  source            EventSource       @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  startedAt         DateTime          @default(now())
+  completedAt       DateTime?
+  status            IngestionRunStatus @default(RUNNING)
+  recordsDiscovered Int               @default(0)
+  recordsCreated    Int               @default(0)
+  recordsUpdated    Int               @default(0)
+  recordsRejected   Int               @default(0)
+  duplicatesFound   Int               @default(0)
+  errorMessage      String?           @db.Text
+  @@index([sourceId, startedAt])
+  @@index([status])
+}
+
+model DuplicatePairDecision {
+  id        String               @id @default(cuid())
+  pairKey   String               @unique
+  decision  DuplicateDecisionType
+  createdAt DateTime             @default(now())
+  @@index([decision])
 }
