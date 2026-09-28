@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteUrl = process.env.PUB_SI_URL ?? "http://localhost:3000";
 export const metadata: Metadata = { metadataBase: new URL(siteUrl), title: { default: "India Race Calendar | Find your next race", template: "%s | India Race Calendar" }, description: "Discover upcoming marathons, ultras, triathlons, cycling events and more across India.", openGraph: { type: "website", siteName: "India Race Calendar", title: "India Race Calendar", description: "Find your next race in India." }, twitter: { card: "summary_large_image", title: "India Race Calendar", description: "Find your next race in India." } };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
