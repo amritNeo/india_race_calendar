@@ -30,17 +30,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <header
-          style={{ background: "white", borderBottom: "1px solid var(--line)" }}
-        >
+        <header className="site-header-wrap">
           <div className="container site-header">
-            <Link
-              className="site-brand"
-              href="/"
-              style={{ fontWeight: 800, letterSpacing: "-.04em", fontSize: 19 }}
-            >
-              India Race Calendar
-              <span style={{ color: "var(--green)" }}>.</span>
+            <Link className="site-brand" href="/">
+              <span className="brand-mark" aria-hidden="true">IRC</span>
+              India Race Calendar<span style={{ color: "var(--green)" }}>.</span>
             </Link>
             <nav className="site-nav" aria-label="Main navigation">
               <Link href="/">Home</Link>
@@ -51,23 +45,8 @@ export default function RootLayout({
           </div>
         </header>
         {children}
-        <footer
-          style={{
-            marginTop: 80,
-            borderTop: "1px solid var(--line)",
-            background: "white",
-          }}
-        >
-          <div
-            className="container"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              paddingBlock: 26,
-              color: "var(--muted)",
-              fontSize: 13,
-            }}
-          >
+        <footer className="site-footer">
+          <div className="container site-footer-inner">
             <span>India Race Calendar · Find your next start line.</span>
             <Link href="/about">About this project</Link>
           </div>
