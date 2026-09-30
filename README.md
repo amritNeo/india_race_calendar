@@ -1,6 +1,6 @@
 # India Race Calendar
 
-A Phase 2 event discovery and data management application for endurance and fitness events across India. It uses Next.js App Router and TypeScript, PostgreSQL through Prisma ORM, and Tailwind CSS 4. All public event and taxonomy lookups are server-side; filters are shareable URL parameters.
+A race discovery and data management application for endurance and fitness events across India. It uses Next.js App Router and TypeScript, Supabase Auth, PostgreSQL through Prisma ORM, and Tailwind CSS 4. All public event and taxonomy lookups are server-side; filters are shareable URL parameters.
 
 > Development listings are illustrative samples marked `isDemo`. They are not verified real races, and no source, registration, or official URLs are fabricated.
 
@@ -27,9 +27,26 @@ Next.js 16, React 19, TypeScript, Tailwind CSS 4, Prisma ORM 7, PostgreSQL, Vite
 
 Copy `.env.example` to `.env.local`. Set `DATABASE_URL` to the application PostgreSQL connection string and `DIRECT_URL` to a direct PostgreSQL connection that supports migrations. Supabase pooled connections can be used at runtime; use the direct database host/port for `DIRECT_URL`. Set `NEXT_PUBLIC_SITE_URL` to the canonical site origin (localhost for development). Next.js loads `.env.local` automatically; Prisma CLI and the seed script explicitly load it too.
 
-The Supabase project URL and publishable/anon key are not PostgreSQL connection strings and cannot be used by Prisma. Copy the database connection string from Supabase's **Connect** dialog into `DATABASE_URL` and the direct connection into `DIRECT_URL`. Keep both values private and do not prefix them with `NEXT_PUBLIC_`.
+Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for authentication. These values are intended for browser use; never expose database connection strings or Supabase secret/service-role keys. The Supabase URL and publishable key are not PostgreSQL connection strings and cannot be used by Prisma. Copy the database connection string from Supabase's **Connect** dialog into `DATABASE_URL` and the direct connection into `DIRECT_URL`.
 
-The app can be started without database variables to preview its demo data. Database migrations and seeding require both database URLs.
+The public site can be previewed without database variables using demo event data. Authentication requires the Supabase URL and publishable key, while username/password accounts also require the configured database and the authentication migration.
+
+## Accounts and authentication
+
+The homepage is the account landing page. Users can create an account at `/signup` with a username, email, and password, or sign in at `/login` with their username/email and password, Google, or Strava. Signed-in users are sent to `/dashboard`; signed-out users are redirected to login. Supabase Auth stores sessions in server-managed cookies. A private profile table stores normalized usernames for username login; row-level security is enabled and direct Data API access is revoked.
+
+Apply the authentication migration before enabling signup:
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+In Supabase Auth settings, enable Google and add the app callback URL to allowed redirect URLs: `http://localhost:3000/auth/callback` locally and your production origin plus `/auth/callback` on Vercel. Configure the Google OAuth callback URI shown by Supabase in Google Cloud Console.
+
+For Strava, create an app in [Strava API Settings](https://www.strava.com/settings/api). Add a Supabase Custom OAuth provider with identifier `custom:strava`, using the Strava OAuth authorize endpoint (`https://www.strava.com/oauth/authorize`), token endpoint (`https://www.strava.com/oauth/token`), and the deployed app's user-info endpoint (`https://YOUR_APP_DOMAIN/api/auth/strava-userinfo`). That endpoint calls Strava's athlete profile API and returns the stable `sub` Supabase needs. Configure the callback URL shown for the custom provider in Supabase as Strava's Authorization Callback Domain, enable optional email because Strava does not provide athlete email, and request only the `read` scope. If Strava rejects PKCE parameters, disable PKCE for this provider in Supabase. Also add the app's `/auth/callback` URL to Supabase's allowed redirect URLs.
+
+OAuth remains unavailable until provider credentials and redirect URLs are configured in Supabase, Google Cloud, and Strava.
 
 ## Phase 2 migration and ingestion
 
@@ -65,7 +82,7 @@ The seed script adds India and 15 cities, event category parents/children, organ
 npm run dev
 ```
 
-Open http://localhost:3000. Use the homepage or `/events`; filters are submitted as GET parameters such as `/events?city=pune&category=triathlon&from=2026-12-01`. City pages live under `/cities/[slug]`; category pages under `/categories/[slug]`.
+Open http://localhost:3000. The homepage is the account landing page; use `/events` to browse and filter the public race calendar with GET parameters such as `/events?city=pune&category=triathlon&from=2026-12-01`. City pages live under `/cities/[slug]`; category pages under `/categories/[slug]`.
 
 ## API
 
@@ -109,6 +126,6 @@ Later work can add authenticated production administration, RSS and scheduled cr
 
 ## Current limits
 
-- No admin authentication, RSS adapter, scheduled crawling, maps, or notifications. Admin reads/writes must remain unavailable in production until authentication is implemented.
+- Admin authorization is separate from athlete login; admin reads/writes remain disabled in production until role-based admin authorization is implemented.
 - Demo records have no live registration/official links and are explicitly marked.
 - Public event listings are currently capped at 60 results; a production catalog should add cursor pagination.

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AuthNav } from "@/components/auth-nav";
 import "./globals.css";
 
-const siteUrl = process.env.PUB_SI_URL ?? "http://localhost:3000";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.PUB_SI_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -41,6 +42,7 @@ export default function RootLayout({
               <Link href="/events">Events</Link>
               <Link href="/cities">Cities</Link>
               <Link href="/about">About</Link>
+              <AuthNav />
             </nav>
           </div>
         </header>

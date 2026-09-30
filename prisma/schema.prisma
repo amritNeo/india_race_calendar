@@ -270,3 +270,11 @@ model DuplicatePairDecision {
   createdAt DateTime             @default(now())
   @@index([decision])
 }
+
+model UserProfile {
+  id        String   @id @db.Uuid
+  email     String?  @unique
+  username  String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

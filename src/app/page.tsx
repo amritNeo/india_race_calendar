@@ -1,44 +1,35 @@
 import Link from "next/link";
-import { EventCard } from "@/components/event-card";
-import { EventFiltersForm } from "@/components/event-filters";
-import { listEvents } from "@/lib/events";
+import { redirect } from "next/navigation";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 export default async function HomePage() {
-  const events = (await listEvents()).slice(0, 6);
+  const user = await getAuthenticatedUser();
+  if (user) redirect("/dashboard");
+
   return (
     <main>
-      <section className="home-hero">
+      <section className="home-hero landing-hero">
         <div className="container home-hero-inner">
           <div className="eyebrow">India&apos;s endurance event calendar</div>
-          <h1>Find your next race in India.</h1>
+          <h1>Your next start line is closer than you think.</h1>
           <p className="home-hero-copy">
-            Discover marathons, ultras, triathlons, cycling events, HYROX,
-            duathlons, hybrid races and more.
+            Browse races across India and find a challenge that fits your
+            training season.
           </p>
-          <EventFiltersForm />
-        </div>
-      </section>
-      <section className="container home-events">
-        <div className="home-events-header">
-          <div>
-            <div className="eyebrow">Make a date with the start line</div>
-            <h2>Upcoming events</h2>
+          <div className="landing-actions">
+            <Link className="button" href="/signup">Create your free account <span aria-hidden="true">→</span></Link>
+            <Link className="landing-secondary" href="/events">Explore the race calendar</Link>
           </div>
-          <Link href="/events" className="button">All events <span aria-hidden="true">→</span></Link>
-        </div>
-        <div className="event-grid">
-          {events.map((event) => <EventCard key={event.id} event={event} />)}
+          <div className="landing-trust">Sign in with Strava, Google, or your email and password.</div>
         </div>
       </section>
-      <section className="container" style={{ paddingTop: 56 }}>
-        <div className="home-cta">
-          <div>
-            <div style={{ opacity: .76, fontSize: 13 }}>Built for every distance and every pace</div>
-            <h2>Your next finish line is out there.</h2>
-          </div>
-          <Link className="button button-light" href="/cities">Explore by city</Link>
-        </div>
+
+      <section className="container landing-highlights" aria-label="What you can do">
+        <article><span className="highlight-number">01</span><h2>Find your next event</h2><p>Browse races by city, date, distance, and discipline.</p></article>
+        <article><span className="highlight-number">02</span><h2>Browse by city</h2><p>Explore races and fitness events around India.</p></article>
+        <article><span className="highlight-number">03</span><h2>Sign in your way</h2><p>Use email and password, Google, or Strava.</p></article>
       </section>
+      <section className="container landing-bottom"><p>Ready to find your next challenge?</p><Link href="/login">Sign in to your account <span aria-hidden="true">→</span></Link></section>
     </main>
   );
 }
